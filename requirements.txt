@@ -1,0 +1,7 @@
+google-genai
+pypdf
+scikit-learn
+numpy
+python-dotenv
+psycopg2-binary
+pgvector
