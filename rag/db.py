@@ -22,17 +22,26 @@ def setup_db():
             id SERIAL PRIMARY KEY,
             source TEXT,
             content TEXT,
-            embedding vector(768)
+            embedding vector(768),
+            embedding_model TEXT
         );
+    """)
+    # Add column if table already exists without it
+    cur.execute("""
+        ALTER TABLE document_chunks
+        ADD COLUMN IF NOT EXISTS embedding_model TEXT;
     """)
     cur.close()
     conn.close()
 
 
-def source_exists(source: str) -> bool:
+def source_exists(source: str, embedding_model: str) -> bool:
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT 1 FROM document_chunks WHERE source = %s LIMIT 1;", (source,))
+    cur.execute(
+        "SELECT 1 FROM document_chunks WHERE source = %s AND embedding_model = %s LIMIT 1;",
+        (source, embedding_model)
+    )
     exists = cur.fetchone() is not None
     cur.close()
     conn.close()

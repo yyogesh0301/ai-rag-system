@@ -1,28 +1,21 @@
-from google import genai
-import os
-from dotenv import load_dotenv
 from rag.db import get_connection
+from rag.providers import get_provider
 
-load_dotenv()
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+provider = get_provider()
 
 
 def retrieve(query: str, k: int = 5) -> list[str]:
-    response = client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=[query]
-    )
-    query_embedding = response.embeddings[0].values
+    query_embedding = provider.embed(query)
 
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
         SELECT content
         FROM document_chunks
+        WHERE embedding_model = %s
         ORDER BY embedding <=> %s::vector
         LIMIT %s;
-    """, (query_embedding, k))
+    """, (provider.embed_model_name, query_embedding, k))
 
     rows = cur.fetchall()
     cur.close()

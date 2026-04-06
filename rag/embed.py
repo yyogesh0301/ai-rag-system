@@ -1,11 +1,7 @@
-from google import genai
-import os
-from dotenv import load_dotenv
 from rag.db import get_connection
+from rag.providers import get_provider
 
-load_dotenv()
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+provider = get_provider()
 
 
 def embed_chunks(chunks: list[str], source: str):
@@ -13,14 +9,10 @@ def embed_chunks(chunks: list[str], source: str):
     cur = conn.cursor()
 
     for chunk in chunks:
-        response = client.models.embed_content(
-            model="gemini-embedding-001",
-            contents=[chunk]
-        )
-        embedding = response.embeddings[0].values
+        embedding = provider.embed(chunk)
         cur.execute(
-            "INSERT INTO document_chunks (source, content, embedding) VALUES (%s, %s, %s);",
-            (source, chunk, embedding)
+            "INSERT INTO document_chunks (source, content, embedding, embedding_model) VALUES (%s, %s, %s, %s);",
+            (source, chunk, embedding, provider.embed_model_name)
         )
         print(f"Embedded and stored: {chunk[:60]}...")
 

@@ -1,4 +1,5 @@
 from rag.db import setup_db, source_exists
+from rag.providers import get_provider
 from rag.ingest import load_pdf
 from rag.chunk import chunk_text
 from rag.embed import embed_chunks
@@ -9,7 +10,9 @@ PDF_PATH = "data/yy.pdf"
 print("Setting up DB...")
 setup_db()
 
-if source_exists(PDF_PATH):
+provider = get_provider()
+
+if source_exists(PDF_PATH, provider.embed_model_name):
     print(f"'{PDF_PATH}' already indexed. Skipping ingestion.")
 else:
     print("Loading PDF...")
@@ -24,6 +27,8 @@ else:
 print("System ready. Ask questions!")
 
 while True:
-    question = input("You: ")
+    question = input("You: ").strip()
+    if not question:
+        continue
     answer = ask(question)
     print("AI:", answer)
