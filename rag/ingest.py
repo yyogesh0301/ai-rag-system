@@ -1,12 +1,7 @@
-from pypdf import PdfReader
+from langchain_community.document_loaders import PyPDFLoader
 
-def load_pdf(path):
-    reader = PdfReader(path)
 
-    text = ""
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
-
-    return text
+def load_pdf(path: str):
+    """Load a PDF and return a list of LangChain Document objects (one per page)."""
+    loader = PyPDFLoader(path)
+    return loader.load()

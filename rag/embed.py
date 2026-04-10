@@ -1,20 +1,7 @@
-from rag.db import get_connection
-from rag.providers import get_provider
-
-provider = get_provider()
+from langchain_postgres import PGVector
 
 
-def embed_chunks(chunks: list[str], source: str):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    for chunk in chunks:
-        embedding = provider.embed(chunk)
-        cur.execute(
-            "INSERT INTO document_chunks (source, content, embedding, embedding_model) VALUES (%s, %s, %s, %s);",
-            (source, chunk, embedding, provider.embed_model_name)
-        )
-        print(f"Embedded and stored: {chunk[:60]}...")
-
-    cur.close()
-    conn.close()
+def embed_chunks(vectorstore: PGVector, chunks: list):
+    """Embed chunks and store them in pgvector."""
+    vectorstore.add_documents(chunks)
+    print(f"Embedded and stored {len(chunks)} chunks.")

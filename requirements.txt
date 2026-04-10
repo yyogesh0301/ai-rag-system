@@ -1,8 +1,10 @@
-google-genai
-pypdf
-scikit-learn
-numpy
-python-dotenv
+langchain
+langchain-text-splitters
+langchain-community
+langchain-ollama
+langchain-google-genai
+langchain-postgres
 psycopg2-binary
 pgvector
-ollama
+pypdf
+python-dotenv

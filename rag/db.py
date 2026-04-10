@@ -1,48 +1,30 @@
 import os
-import psycopg2
-from pgvector.psycopg2 import register_vector
 from dotenv import load_dotenv
+from langchain_postgres import PGVector
 
 load_dotenv()
 
 
-def get_connection():
-    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-    conn.autocommit = True
-    register_vector(conn)
-    return conn
+def get_vectorstore(embeddings, collection_name: str) -> PGVector:
+    """Return a PGVector store for the given embeddings and collection.
 
-
-def setup_db():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS document_chunks (
-            id SERIAL PRIMARY KEY,
-            source TEXT,
-            content TEXT,
-            embedding vector(768),
-            embedding_model TEXT
-        );
-    """)
-    # Add column if table already exists without it
-    cur.execute("""
-        ALTER TABLE document_chunks
-        ADD COLUMN IF NOT EXISTS embedding_model TEXT;
-    """)
-    cur.close()
-    conn.close()
-
-
-def source_exists(source: str, embedding_model: str) -> bool:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM document_chunks WHERE source = %s AND embedding_model = %s LIMIT 1;",
-        (source, embedding_model)
+    PGVector automatically:
+    - Creates the table if it doesn't exist
+    - Detects embedding dimensions from the model
+    - Isolates collections by name (one per embedding model)
+    """
+    return PGVector(
+        embeddings=embeddings,
+        collection_name=collection_name,
+        connection=os.getenv("DATABASE_URL"),
     )
-    exists = cur.fetchone() is not None
-    cur.close()
-    conn.close()
-    return exists
+
+
+def source_exists(vectorstore: PGVector, source: str) -> bool:
+    """Check if a source has already been indexed in this collection."""
+    results = vectorstore.similarity_search(
+        query="",
+        k=1,
+        filter={"source": source}
+    )
+    return len(results) > 0

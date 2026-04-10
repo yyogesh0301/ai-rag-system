@@ -1,31 +1,29 @@
-from rag.retrieve import retrieve
-from rag.providers import get_provider
-
-provider = get_provider()
-
-chat_history = []
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 
-def ask(question: str) -> str:
-    context_chunks = retrieve(question, k=5)
-    context = "\n".join(context_chunks)
+def build_chain(retriever, llm):
+    """Build an LCEL RAG chain: retrieve → prompt → llm → parse."""
 
-    history_text = ""
-    for q, a in chat_history:
-        history_text += f"User: {q}\nAI: {a}\n"
-
-    prompt = f"""You are a helpful assistant.
-    Use the context if relevant, otherwise answer from your own knowledge
-
-Previous conversation:
-{history_text}
+    prompt = ChatPromptTemplate.from_template("""You are a helpful assistant.
+Use the context below if it is relevant to the question.
+If not, answer from your own knowledge.
 
 Context:
 {context}
 
 Question:
-{question}"""
+{question}""")
 
-    answer = provider.generate(prompt)
-    chat_history.append((question, answer))
-    return answer
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    return chain
