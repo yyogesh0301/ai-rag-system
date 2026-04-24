@@ -27,13 +27,14 @@ services:
     container_name: rag_app
     env_file:
       - .env
+    ports:
+      - "8000:8000"
     depends_on:
       pgvector:
         condition: service_healthy
     networks:
       - rag_network
-    stdin_open: true
-    tty: true
+    restart: unless-stopped
 
 volumes:
   pgvector_data:

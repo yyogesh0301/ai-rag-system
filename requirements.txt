@@ -7,4 +7,7 @@ langchain-postgres
 psycopg2-binary
 pgvector
 pypdf
+jq
 python-dotenv
+uvicorn
+python-multipart

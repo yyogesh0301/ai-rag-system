@@ -9,13 +9,13 @@ A backend-first knowledge retrieval platform that lets you query documents using
 - **Model isolation** — separate vector collections per embedding model, no cross-model comparison issues
 - **Smart chunking** — `RecursiveCharacterTextSplitter` for better context boundaries
 - **Context-aware answers** — uses retrieved context when relevant, falls back to model knowledge otherwise
-- **Multi-source ingestion** — PDF, CSV, JSON, raw text *(in progress)*
-- **REST API** — FastAPI endpoints for `/ingest`, `/query`, `/status` *(in progress)*
+- **Multi-source ingestion** — drop PDF, CSV, JSON, or TXT files into `data/`, auto-ingested on startup
+- **REST API** — FastAPI endpoints for `/ingest`, `/query`, `/status/{job_id}`
 - **Async ingestion** — background workers with Celery, job state tracking *(in progress)*
 
 ## Tech Stack
 
-- **Framework**: FastAPI (Python)
+- **Framework**: FastAPI + Uvicorn (Python)
 - **Vector DB**: PostgreSQL + pgvector
 - **LLM / Embeddings**: Ollama (`gemma3:4b`, `nomic-embed-text`) / Google Gemini
 - **Orchestration**: LangChain (LCEL chains, PGVector, document loaders) + LangGraph
@@ -43,10 +43,50 @@ cp .env.example .env   # fill in your values
 ### Run
 
 ```bash
-# Start DB in background, run app interactively
-docker compose up pgvector -d
-docker compose run --rm app
+docker compose up --build
 ```
+
+API will be available at `http://localhost:8000`
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/ingest` | Upload a file (PDF, CSV, JSON, TXT) for ingestion |
+| `POST` | `/query` | Ask a question, get a context-aware answer |
+| `GET` | `/status/{job_id}` | Check ingestion job status |
+| `GET` | `/health` | Health check |
+| `GET` | `/docs` | Swagger UI |
+
+### Examples
+
+```bash
+# Upload a file
+curl -X POST http://localhost:8000/ingest \
+  -F "file=@data/yy.pdf"
+
+# Ask a question
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "what is my name?"}'
+
+# Check job status
+curl http://localhost:8000/status/<job_id>
+```
+
+## Ingestion
+
+Drop any supported file into the `data/` folder — the app auto-ingests on startup and skips already-indexed files.
+
+```
+data/
+  resume.pdf
+  employees.csv
+  config.json
+  notes.txt
+```
+
+Supported formats: `.pdf`, `.csv`, `.json`, `.txt`
 
 ## Configuration
 
@@ -63,26 +103,32 @@ docker compose run --rm app
 
 ```
 ai-rag-system/
+├── api/
+│   ├── routes/
+│   │   ├── ingest.py     # POST /ingest
+│   │   ├── query.py      # POST /query
+│   │   └── status.py     # GET /status/{job_id}
+│   ├── app.py            # FastAPI app + lifespan
+│   ├── jobs.py           # Job state tracking
+│   └── schemas.py        # Pydantic models
 ├── rag/
 │   ├── providers/        # LLM provider abstraction (Ollama / Gemini)
-│   ├── ingest.py         # Document loading
+│   ├── ingest.py         # Document loading (PDF, CSV, JSON, TXT)
 │   ├── chunk.py          # Text splitting
 │   ├── db.py             # pgvector setup
 │   ├── embed.py          # Embedding + storage
 │   ├── retrieve.py       # Similarity search
 │   └── chat.py           # LCEL chain
-├── data/                 # Input documents
-├── docker-compose.yml
-└── main.py
+├── data/                 # Drop documents here
+├── server.py             # Uvicorn entry point
+└── docker-compose.yml
 ```
 
 ## LangChain Architecture
 
-The system is built on LangChain's ecosystem:
-
 | Component | LangChain Class | Role |
 |-----------|----------------|------|
-| Document loading | `PyPDFLoader` | Loads PDFs with page metadata |
+| Document loading | `PyPDFLoader`, `CSVLoader`, `JSONLoader`, `TextLoader` | Loads files with metadata |
 | Chunking | `RecursiveCharacterTextSplitter` | Splits on paragraphs → sentences → words |
 | Vector store | `PGVector` | Auto-detects embedding dimensions, manages collections |
 | Retrieval | `vectorstore.as_retriever()` | Cosine similarity search, top-k |

@@ -1,4 +1,5 @@
 import os
+import psycopg2
 from dotenv import load_dotenv
 from langchain_postgres import PGVector
 
@@ -20,11 +21,19 @@ def get_vectorstore(embeddings, collection_name: str) -> PGVector:
     )
 
 
-def source_exists(vectorstore: PGVector, source: str) -> bool:
-    """Check if a source has already been indexed in this collection."""
-    results = vectorstore.similarity_search(
-        query="",
-        k=1,
-        filter={"source": source}
-    )
-    return len(results) > 0
+def source_exists(collection_name: str, source: str) -> bool:
+    """Check if a source is already indexed — direct SQL, no embedding call needed."""
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 1
+        FROM langchain_pg_embedding e
+        JOIN langchain_pg_collection c ON e.collection_id = c.uuid
+        WHERE c.name = %s
+        AND e.cmetadata->>'source' = %s
+        LIMIT 1;
+    """, (collection_name, source))
+    exists = cur.fetchone() is not None
+    cur.close()
+    conn.close()
+    return exists
