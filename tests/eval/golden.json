@@ -1,0 +1,26 @@
+[
+  {
+    "id": "resume-name",
+    "question": "What is the candidate's full name on the resume?",
+    "expected_substring": "Yogesh",
+    "expected_source_uri": "data/yy.pdf",
+    "filter": {"source_type": {"$eq": "pdf"}},
+    "k": 5
+  },
+  {
+    "id": "resume-skills",
+    "question": "List the technical skills mentioned in the resume.",
+    "expected_substring": "Python",
+    "expected_source_uri": "data/yy.pdf",
+    "filter": {"tags": {"$in": ["resume"]}},
+    "k": 5
+  },
+  {
+    "id": "out-of-corpus",
+    "question": "What is the GDP of France in 1987?",
+    "expected_substring": "I don't know based on the provided context",
+    "expected_source_uri": null,
+    "filter": null,
+    "k": 5
+  }
+]

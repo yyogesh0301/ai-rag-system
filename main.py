@@ -1,5 +1,5 @@
 from rag.providers import get_provider
-from rag.ingest import load_file, load_all_files
+from rag.ingest import load_file, load_all_files, infer_source_type
 from rag.chunk import chunk_documents
 from rag.db import get_vectorstore, source_exists
 from rag.embed import embed_chunks
@@ -25,10 +25,16 @@ else:
         else:
             print(f"Ingesting: {file_path}")
             documents = load_file(file_path)
-            chunks = chunk_documents(documents)
+            chunks = chunk_documents(
+                documents,
+                source_type=infer_source_type(file_path),
+                source_uri=file_path,
+                embed_model=provider.embed_model_name,
+                tags=[],
+            )
             print(f"  {len(chunks)} chunks — embedding...")
             embed_chunks(vectorstore, chunks)
-            print(f"  Done.")
+            print("  Done.")
 
 retriever = get_retriever(vectorstore, k=5)
 chain = build_chain(retriever, llm)
